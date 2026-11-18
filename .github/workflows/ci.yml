@@ -1,0 +1,30 @@
+name: CI Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    name: Compile and package for sbt 1.x and sbt 2.x
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: coursier/cache-action@v9
+      - uses: coursier/setup-action@v3.1.0
+        with:
+          # sbt 2.0 requires JDK 17+ (the cross-build compiles the _sbt2_3 axis)
+          jvm: 'temurin:17'
+          apps: sbt
+      - name: Check formatting, compile and package every axis
+        run: sbt "scalafmtCheckAll ; scalafmtSbtCheck ; +packageBin"

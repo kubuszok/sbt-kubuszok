@@ -1,8 +1,8 @@
 name: Sonatype Release
 
 on:
-  pull_request:
-    branches: [ master ]
+  # Never on pull_request: bot/fork PRs get no secrets, and same-repo PRs would publish snapshots of unmerged code.
+  # PRs are checked by ci.yml.
   push:
     branches: [ master ]
     tags: [ '*' ]

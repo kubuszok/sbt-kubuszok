@@ -6,7 +6,8 @@ import sbt.*
 import sbt.ProjectMatrix
 // NOTE: sbt-welcome has no final sbt-2.0 build, so the welcome-specific
 // `usefulTasks` helper (returning Seq[sbtwelcome.UsefulTask]) is only present on
-// the sbt-1.x axis. Everything else below is identical to the sbt-1.x variant.
+// the sbt-1.x axis. Apart from that (and `testTask` = "testFull", because sbt 2.0 made
+// `test` incremental) everything below is identical to the sbt-1.x variant.
 
 class Aliases(
     val published: Seq[ProjectMatrix],
@@ -88,24 +89,51 @@ class Aliases(
     s"$prefix-${platform.toLowerCase}-$scalaSuffix"
   }
 
+  // sbt 2.x: `test` is incremental and cached (a fresh CI run can report
+  // "No tests to run"), `testFull` always runs every suite.
+  protected def testTask: String = "testFull"
+
+  // `ci-release` runs Scaladoc for every published module, so `ci` runs it too: broken doc links fail CI, not the release.
+  protected def docInCi: Boolean = true
+
   def ci(platform: String, scalaBinary: String): String = {
     val testedIds = projectIds(published ++ testOnly, platform, scalaBinary).distinct
     val compiledOnlyIds = projectIds(compileOnly, platform, scalaBinary).filterNot(testedIds.contains)
 
     val clean = Vector("clean")
-    val compileAndTest = testedIds.map(id => s"$id/compile") ++ testedIds.map(id => s"$id/test")
+    val compileAndTest = testedIds.map(id => s"$id/compile") ++ testedIds.map(id => s"$id/$testTask")
     val coverageCompileAndTest =
       if platform == "JVM" then "coverage" +: compileAndTest :+ "coverageAggregate" :+ "coverageOff"
       else compileAndTest
 
-    val tasks = clean ++ coverageCompileAndTest ++ compiledOnlyIds.map(id => s"$id/compile")
+    val docs =
+      if docInCi then projectIds(published, platform, scalaBinary).distinct.map(id => s"$id/doc")
+      else Vector.empty
+
+    val tasks = clean ++ coverageCompileAndTest ++ compiledOnlyIds.map(id => s"$id/compile") ++ docs
     tasks.mkString(" ; ")
   }
 
   def test(platform: String, scalaBinary: String): String =
-    projectIds(published ++ testOnly, platform, scalaBinary).distinct.map(id => s"$id/test").mkString(" ; ")
+    projectIds(published ++ testOnly, platform, scalaBinary).distinct.map(id => s"$id/$testTask").mkString(" ; ")
 
   val release: String = "ci-release"
+
+  /** Command aliases for every (platform, Scala) combination in the matrices: `ci-<platform>-<scala>` and
+    * `test-<platform>-<scala>` (e.g. `ci-jvm-3`, `test-native-2_13`), plus `publish-local-for-tests` when a filter
+    * `(scalaBinary, platform) => Boolean` is given. Add them to the root project: `.settings(al.commandAliases())`.
+    * Works on sbt 1.x and 2.x (no sbt-welcome needed); on sbt 1.x `usefulTasks` registers the same aliases.
+    */
+  def commandAliases(publishLocalForTestsFilter: Option[(String, String) => Boolean] = None): Seq[Def.Setting[?]] = {
+    val perCombination = combinations.flatMap { case (platform, scalaBinary) =>
+      addCommandAlias(aliasName("ci", platform, scalaBinary), ci(platform, scalaBinary)) ++
+        addCommandAlias(aliasName("test", platform, scalaBinary), test(platform, scalaBinary))
+    }
+    val publishLocalAlias = publishLocalForTestsFilter.toSeq.flatMap { filter =>
+      addCommandAlias("publish-local-for-tests", publishLocalForTests(filter))
+    }
+    perCombination ++ publishLocalAlias
+  }
 
   def publishLocal(platform: String, scalaBinary: String): Vector[String] =
     projectIds(published, platform, scalaBinary).map(id => s"$id/publishLocal")
