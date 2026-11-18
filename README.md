@@ -110,6 +110,15 @@ changing it locally):
 ide.scala=3
 # jvm, js or native (required when more than one platform is built)
 ide.platform=jvm
+# project-specific keys are fine too
+log.cross-quotes=false
+```
+
+Read project-specific keys with `dev.prop(name)`. It returns the trimmed value, or `None` if the key is missing or
+blank:
+
+```scala
+val logCrossQuotes: Boolean = dev.prop("log.cross-quotes").fold(!isCI)(_ == "true")
 ```
 
 ### Aliases
