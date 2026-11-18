@@ -186,7 +186,9 @@ lazy val al = new Aliases(published = Seq(core, utils, tests)) {
 - **CI**: a matrix over `scala: ['2_13', '3']` × `platform: ['jvm', 'js', 'native']` running
   `sbt ci-${{ matrix.platform }}-${{ matrix.scala }}`, plus a `scalafmt --check` job.
 - **Release**: [`.github/workflows/release.yml`](.github/workflows/release.yml) of this repository is the template.
-  - Trigger it on `push` to `master` and on tags only, never on `pull_request`: bot and fork PRs have no secrets.
+  - Trigger it on `push` to `master`, on tags, and on `pull_request` for trusted authors only. PR snapshots let a
+    change be tested in other repos before releasing. Bot and fork PRs have no secrets, so guard the job with
+    `if: github.event_name != 'pull_request' || contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)`.
   - Use `actions/checkout` with `fetch-depth: 0`.
   - Import the GPG key with `crazy-max/ghaction-import-gpg` (`GPG_PRIVATE_KEY`, `GPG_PASSPHRASE`).
   - Run `sbt ci-release` with `SONATYPE_USERNAME`/`SONATYPE_PASSWORD` in `env`.
