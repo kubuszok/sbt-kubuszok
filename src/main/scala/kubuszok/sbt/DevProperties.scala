@@ -21,8 +21,12 @@ class DevProperties(
     }
     .getOrElse(new java.util.Properties())
 
-  // dev.properties values may carry trailing whitespace (java.util.Properties keeps it)
-  private def prop(name: String): Option[String] = Option(props.getProperty(name)).map(_.trim).filter(_.nonEmpty)
+  /** Reads a property from dev.properties - also project-specific ones, e.g. `dev.prop("log.cross-quotes")`.
+    *
+    * @return
+    *   the trimmed value (java.util.Properties keeps trailing whitespace), None if missing or blank
+    */
+  def prop(name: String): Option[String] = Option(props.getProperty(name)).map(_.trim).filter(_.nonEmpty)
 
   val ideScala: String = (scala213, scala3) match {
     case (Some(version), None)              => version
