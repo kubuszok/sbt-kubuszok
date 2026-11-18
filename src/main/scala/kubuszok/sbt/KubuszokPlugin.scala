@@ -6,6 +6,7 @@ import com.github.sbt.git.GitPlugin
 import com.github.sbt.git.GitVersioning
 import com.github.sbt.git.GitBranchPrompt
 import com.github.sbt.git.SbtGit.git
+import com.github.sbt.git.SbtGit.GitKeys
 import commandmatrix.CommandMatrixPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
 import org.scalafmt.sbt.ScalafmtPlugin.autoImport.scalafmtOnCompile
@@ -24,7 +25,7 @@ object KubuszokPlugin extends AutoPlugin {
   // - release (git tag present): runs publishSigned then sonatypeBundleRelease (stages locally, then pushes)
   private val ciReleaseCommand = Command.command("ci-release") { state =>
     val extracted = Project.extract(state)
-    val tags = extracted.get(git.gitCurrentTags)
+    val tags = extracted.get(git.gitCurrentTags).filter(_.trim.nonEmpty)
     // "+" cross-publishes EVERY crossScalaVersions axis (sbt 1.x `_2.12_1.0` AND sbt 2.0 `_sbt2_3`);
     // a plain "publishSigned" would only publish the default axis and silently omit the sbt 2.0 artifact.
     if (tags.nonEmpty) "+publishSigned" :: "sonaRelease" :: state
@@ -66,7 +67,12 @@ object KubuszokPlugin extends AutoPlugin {
   // ThisProject / settings
   override lazy val buildSettings: Seq[Setting[?]] =
     GitVersioning.buildSettings ++ Seq(
-      scalafmtOnCompile := !isCI
+      scalafmtOnCompile := !isCI,
+      // JGit cannot read a `git worktree` (`.git` is a file pointing at the main repository): the version falls back
+      // to a timestamp and tags are not seen. Read the repository through the git CLI there instead.
+      GitKeys.useConsoleForROGit := GitKeys.useConsoleForROGit.value || (file(".") / ".git").isFile,
+      // The console reader reports `Seq("")` for an untagged HEAD, which would make every commit look like a release.
+      git.gitCurrentTags := git.gitCurrentTags.value.filter(_.trim.nonEmpty)
     )
 
   // Global / settings

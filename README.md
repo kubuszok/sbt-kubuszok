@@ -44,6 +44,8 @@ Activates automatically for every project. The following are already configured,
   - Otherwise the version is `<last-tag>-<n>-g<sha>-SNAPSHOT`, or `<sha>-SNAPSHOT` when there is no tag or the
     clone is shallow.
   - `isSnapshot` is true exactly when HEAD has no tag; uncommitted changes do not matter.
+  - Works in `git worktree` checkouts too: there the repository is read with the `git` CLI, because JGit cannot read
+    worktrees.
   - Do not set `version` yourself.
 - **Publishing**:
   - `publishTo`: snapshots go to Maven Central Snapshots, releases go to sbt's `localStaging`.
