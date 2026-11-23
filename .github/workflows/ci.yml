@@ -21,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v9
-      - uses: coursier/setup-action@v3.1.0
+      - uses: coursier/setup-action@v3.1.1
         with:
           # sbt 2.0 requires JDK 17+ (the cross-build compiles the _sbt2_3 axis)
           jvm: 'temurin:17'
